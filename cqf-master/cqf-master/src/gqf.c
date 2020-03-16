@@ -1579,19 +1579,19 @@ inline static int _remove(QF *qf, __uint128_t hash, uint64_t count, uint8_t
 
 	/*Find the counter for this remainder, if one exists.*/
 	current_end = decode_counter(qf, runstart_index, &current_remainder, &current_count);
-	while (current_remainder < hash_remainder && !is_runend(qf, current_end)) {
+	while (current_remainder / 2 < hash_remainder / 2 && !is_runend(qf, current_end)) {
 		runstart_index = current_end + 1;
 		current_end = decode_counter(qf, runstart_index, &current_remainder, &current_count);
 	}
 	/* remainder not found in the given run */
-	if (current_remainder != hash_remainder)
+	if (current_remainder != hash_remainder && current_remainder != hash_remainder ^ 1)
 		return -1;
 	
 	if (original_runstart_index == runstart_index && is_runend(qf, current_end))
 		only_item_in_the_run = 1;
 
 	/* endode the new counter */
-	uint64_t *p = encode_counter(qf, hash_remainder,
+	uint64_t *p = encode_counter(qf, current_remainder,
 															 count > current_count ? 0 : current_count - count,
 															 &new_values[67]);
 	ret_numfreedslots = remove_replace_slots_and_shift_remainders_and_runends_and_offsets(qf,
@@ -2048,8 +2048,82 @@ uint64_t qf_count_key_value(const QF *qf, uint64_t key, uint64_t value,
 	do {
 		current_end = decode_counter(qf, runstart_index, &current_remainder,
 																 &current_count);
-		if (current_remainder == hash_remainder)
+		if (current_remainder / 2 == hash_remainder / 2)
 			return current_count;
+		runstart_index = current_end + 1;
+	} while (!is_runend(qf, current_end));
+
+	return 0;
+}
+
+uint8_t qf_get_last_bit(const QF *qf, uint64_t key, uint64_t value, uint8_t flags)
+{
+	if (GET_KEY_HASH(flags) != QF_KEY_IS_HASH) {
+		if (qf->metadata->hash_mode == QF_HASH_DEFAULT)
+			key = MurmurHash64A(((void *)&key), sizeof(key), qf->metadata->seed) % qf->metadata->range;
+		else if (qf->metadata->hash_mode == QF_HASH_INVERTIBLE)
+			key = hash_64(key, BITMASK(qf->metadata->key_bits));
+	}
+	uint64_t hash = (key << qf->metadata->value_bits) | (value & BITMASK(qf->metadata->value_bits));
+	uint64_t hash_remainder   = hash & BITMASK(qf->metadata->bits_per_slot);
+	int64_t hash_bucket_index = hash >> qf->metadata->bits_per_slot;
+
+	if (!is_occupied(qf, hash_bucket_index))
+		return 2; //2 is "not found"
+
+	int64_t runstart_index = hash_bucket_index == 0 ? 0 : run_end(qf, hash_bucket_index-1) + 1;
+	if (runstart_index < hash_bucket_index)
+		runstart_index = hash_bucket_index;
+
+	/* printf("MC RUNSTART: %02lx RUNEND: %02lx\n", runstart_index, runend_index); */
+
+	uint64_t current_remainder, current_count, current_end;
+	do {
+		current_end = decode_counter(qf, runstart_index, &current_remainder, &current_count);
+		if (current_remainder / 2 == hash_remainder / 2)
+			return current_remainder & 1;
+		runstart_index = current_end + 1;
+	} while (!is_runend(qf, current_end));
+
+	return 2;
+}
+
+void qf_set_last_bit_at_idx(const QF* qf, uint64_t index, uint8_t bit)
+{
+	set_slot(qf, index, ((get_slot(qf, index) >> 1) << 1) + bit);
+}
+
+uint64_t qf_set_last_bit(const QF *qf, uint64_t key, uint64_t value, uint8_t flags, uint8_t bit)
+{
+	bit = bit & 1;
+
+	if (GET_KEY_HASH(flags) != QF_KEY_IS_HASH) {
+		if (qf->metadata->hash_mode == QF_HASH_DEFAULT)
+			key = MurmurHash64A(((void *)&key), sizeof(key), qf->metadata->seed) % qf->metadata->range;
+		else if (qf->metadata->hash_mode == QF_HASH_INVERTIBLE)
+			key = hash_64(key, BITMASK(qf->metadata->key_bits));
+	}
+	uint64_t hash = (key << qf->metadata->value_bits) | (value & BITMASK(qf->metadata->value_bits));
+	uint64_t hash_remainder   = hash & BITMASK(qf->metadata->bits_per_slot);
+	int64_t hash_bucket_index = hash >> qf->metadata->bits_per_slot;
+
+	if (!is_occupied(qf, hash_bucket_index))
+		return 0;
+
+	int64_t runstart_index = hash_bucket_index == 0 ? 0 : run_end(qf, hash_bucket_index-1) + 1;
+	if (runstart_index < hash_bucket_index)
+		runstart_index = hash_bucket_index;
+
+	/* printf("MC RUNSTART: %02lx RUNEND: %02lx\n", runstart_index, runend_index); */
+
+	uint64_t current_remainder, current_count, current_end;
+	do {
+		current_end = decode_counter(qf, runstart_index, &current_remainder, &current_count);
+		if (current_remainder / 2 == hash_remainder / 2) {
+			qf_set_last_bit_at_idx(qf, runstart_index, bit);
+			qf_set_last_bit_at_idx(qf, current_end, bit);
+			return 1;
+		}
 		runstart_index = current_end + 1;
 	} while (!is_runend(qf, current_end));
 
@@ -2086,7 +2160,7 @@ uint64_t qf_query(const QF *qf, uint64_t key, uint64_t *value, uint8_t flags)
 																 &current_count);
 		*value = current_remainder & BITMASK(qf->metadata->value_bits);
 		current_remainder = current_remainder >> qf->metadata->value_bits;
-		if (current_remainder == hash_remainder) {
+		if (current_remainder / 2 == hash_remainder / 2) {
 			return current_count;
 		}
 		runstart_index = current_end + 1;

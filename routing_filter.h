@@ -19,15 +19,13 @@ struct rfilter {
 	QF qf;
 	libcuckoo::cuckoohash_map<int64_t, int64_t> table;
 
-	rfilter(int64_t fbits, int64_t cbits, int64_t fpbits) {
+	rfilter(int64_t fbits, int64_t fpbits) {
 		filter_bits = fbits;
-		cuckoo_bits = cbits;
 		filter_size = 1ll << fbits;
-		cuckoo_size = 1ll << cbits;
 		fprint_bits = fpbits; //includes bit for routing
 		hash_bits = fbits + fpbits;
 		
-		if(!qf_initfile(&qf, filter_size, hash_bits, 0, QF_HASH_INVERTIBLE, 0, "mycqf.file")) {
+		if(!qf_initfile(&qf, filter_size, hash_bits, 0, QF_HASH_DEFAULT, 0, "mycqf.file")) {
 			fprintf(stderr, "Can't allocate QF.\n");
 			abort();
 		}
@@ -36,13 +34,13 @@ struct rfilter {
 	}
 	
 	bool insert(int64_t key) {
-		int ret = qf_insert(&qf, key, 0, 1, QF_NO_LOCK, true);
-		table.insert(key, key);
+		int ret = qf_insert(&qf, key, 0, 1, QF_NO_LOCK);
+		table.insert(&qf, key, key);
 		return ret >= 0;
 	}
 
 	bool contains(int64_t key) {
-		bool pos = qf_get_last_bit(&qf, key);
+		bool pos = qf_get_last_bit(&qf, key, 0, QF_NO_LOCK);
 		return table.contains(key, pos);
 	}
 };

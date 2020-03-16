@@ -4,14 +4,13 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
 
-	if(argc != 3) {
-		fprintf(stderr, "Provide log of number of slots in filter and log of number of cuckoo tables.\n");
+	if(argc != 2) {
+		fprintf(stderr, "Provide log of number of slots in filter.\n");
 		exit(1);
 	}
 	
 	int64_t f_bits = atoi(argv[1]);
-	int64_t c_bits = atoi(argv[2]);
-	rfilter rf(f_bits, c_bits, 9);
+	rfilter rf(f_bits, 9);
 
 	int n = 10;
 	int64_t a[n] = {1, 2, 3, 3333333, 9009009, 23432, 23432, 3, 6, 7};
@@ -24,8 +23,8 @@ int main(int argc, char* argv[]) {
 		}
 
 	for(int i = 0; i < n; i++) {
-		int64_t v = rf.get(b[i]);
-		if(v == -1) fprintf(stdout, "%ld not contained in filter.\n", a[i]);
-		else fprintf(stdout, "%ld occurs %ld times in filter.\n", a[i], v);
+		int64_t v = rf.contains(b[i]);
+		if(!v) fprintf(stdout, "%ld not contained in filter.\n", a[i]);
+		else fprintf(stdout, "%ld contained in filter.\n", a[i]);
 	}
 }

@@ -198,7 +198,11 @@ extern "C" {
 		 value, into qf.
 		 May return QF_COULDNT_LOCK if called with QF_TRY_LOCK.  */
 	uint64_t qf_count_key_value(const QF *qf, uint64_t key, uint64_t value,
-															uint8_t flags);
+			uint8_t flags);
+	
+	uint64_t qf_set_last_bit(const QF *qf, uint64_t key, uint64_t value, uint8_t flags, uint8_t bit);
+	
+	uint8_t qf_get_last_bit(const QF *qf, uint64_t key, uint64_t value, uint8_t flags);
 
 	/* Returns a unique index corresponding to the key in the CQF.  Note
 		 that this can change if further modifications are made to the
