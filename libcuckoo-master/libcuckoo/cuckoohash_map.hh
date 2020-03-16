@@ -1138,7 +1138,7 @@ private:
     if (slot != -1) {
       return table_position{s2, static_cast<size_type>(slot), ok};
     }
-    printf("Item not found in either bucked.\n");
+    printf("Item not found in either bucket.\n");
     return table_position{0, 0, failure_key_not_found};
   }
 

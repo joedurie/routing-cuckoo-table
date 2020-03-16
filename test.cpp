@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
 
 	for(int i = 0; i < n; i++) {
 		int64_t v = rf.contains(b[i]);
-		if(!v) fprintf(stdout, "%ld not contained in filter.\n", a[i]);
-		else fprintf(stdout, "%ld contained in filter.\n", a[i]);
+		if(!v) fprintf(stdout, "%ld not contained in filter.\n", b[i]);
+		else fprintf(stdout, "%ld contained in filter.\n", b[i]);
 	}
 }
