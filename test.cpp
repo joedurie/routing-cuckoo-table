@@ -21,6 +21,8 @@ int main(int argc, char* argv[]) {
 			fprintf(stderr, "Failed insert of %ld.\n", a[i]);
 			exit(1);
 		}
+	
+	fprintf(stdout, "INSERTS COMPLETE\n");
 
 	for(int i = 0; i < n; i++) {
 		int64_t v = rf.contains(b[i]);

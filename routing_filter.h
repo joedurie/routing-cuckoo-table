@@ -34,13 +34,15 @@ struct rfilter {
 	}
 	
 	bool insert(int64_t key) {
+		if(table.contains(key, 0)) return true;
 		int ret = qf_insert(&qf, key, 0, 1, QF_NO_LOCK);
 		table.insert(&qf, key, key);
 		return ret >= 0;
 	}
 
 	bool contains(int64_t key) {
-		bool pos = qf_get_last_bit(&qf, key, 0, QF_NO_LOCK);
+		int pos = qf_get_last_bit(&qf, key, 0, QF_NO_LOCK);
+		if(pos == 2) return false;
 		return table.contains(key, pos);
 	}
 };
