@@ -1222,14 +1222,14 @@ private:
       return table_position{b.i1, static_cast<size_type>(res1),
                             failure_key_duplicated};
     }
+    if (res1 != -1) {
+      qf_set_bit(qf, key, 0, QF_WAIT_FOR_LOCK, 0);
+      return table_position{b.i1, static_cast<size_type>(res1), ok};
+    }
     bucket &b2 = buckets_[b.i2];
     if (!try_find_insert_bucket(b2, res2, hv.partial, key)) {
       return table_position{b.i2, static_cast<size_type>(res2),
                             failure_key_duplicated};
-    }
-    if (res1 != -1) {
-      qf_set_bit(qf, key, 0, QF_WAIT_FOR_LOCK, 0);
-      return table_position{b.i1, static_cast<size_type>(res1), ok};
     }
     if (res2 != -1) {
       qf_set_bit(qf, key, 0, QF_WAIT_FOR_LOCK, 1);
@@ -1257,11 +1257,13 @@ private:
       // Since we unlocked the buckets during run_cuckoo, another insert
       // could have inserted the same key into either b.i1 or
       // b.i2, so we check for that before doing the insert.
-      table_position pos = cuckoo_find(key, hv.partial, b.i1, b.i2, true);
+      table_position pos = cuckoo_find(key, hv.partial, b.i1, b.i2, 3);
       if (pos.status == ok) {
         pos.status = failure_key_duplicated;
         return pos;
       }
+      if(insert_bucket == b.i1) qf_set_bit(qf, key, 0, QF_WAIT_FOR_LOCK, 0);
+      else if(insert_bucket == b.i2) qf_set_bit(qf, key, 0, QF_WAIT_FOR_LOCK, 1);
       return table_position{insert_bucket, insert_slot, ok};
     }
     assert(st == failure);

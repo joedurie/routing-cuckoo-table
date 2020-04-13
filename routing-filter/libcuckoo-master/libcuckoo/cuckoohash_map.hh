@@ -1224,14 +1224,14 @@ private:
       return table_position{b.i1, static_cast<size_type>(res1),
                             failure_key_duplicated};
     }
+    if (res1 != -1) {
+      qf_set_last_bit(qf, key, 0, QF_WAIT_FOR_LOCK, 1);
+      return table_position{b.i1, static_cast<size_type>(res1), ok};
+    }
     bucket &b2 = buckets_[b.i2];
     if (!try_find_insert_bucket(b2, res2, hv.partial, key)) {
       return table_position{b.i2, static_cast<size_type>(res2),
                             failure_key_duplicated};
-    }
-    if (res1 != -1) {
-      qf_set_last_bit(qf, key, 0, QF_WAIT_FOR_LOCK, 1);
-      return table_position{b.i1, static_cast<size_type>(res1), ok};
     }
     if (res2 != -1) {
       qf_set_last_bit(qf, key, 0, QF_WAIT_FOR_LOCK, 0);
@@ -1264,6 +1264,7 @@ private:
         pos.status = failure_key_duplicated;
         return pos;
       }
+      qf_set_last_bit(qf, key, 0, QF_WAIT_FOR_LOCK, insert_bucket == b.i1 ? 1 : 0);
       return table_position{insert_bucket, insert_slot, ok};
     }
     assert(st == failure);

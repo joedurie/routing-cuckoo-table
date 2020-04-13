@@ -1,11 +1,13 @@
-#include "routing-filter/routing_filter.h"
+//#include "routing-filter/routing_filter.h"
 //#include "two-bits/two-bits.h"
-//#include "libcuckoo-master/wrapper.h"
+#include "libcuckoo-master/wrapper.h"
 
 #include<stdlib.h>
 #include<set>
 #include<time.h>
 using namespace std;
+
+#define ELAPSED_SEC(t) ((clock() - t) / (double) CLOCKS_PER_SEC)
 
 int main(int argc, char* argv[]) {
 
@@ -17,54 +19,50 @@ int main(int argc, char* argv[]) {
 	int64_t f_bits = atoi(argv[1]);
 	int64_t N = atoi(argv[2]);
 
-	rfilter table(f_bits, 9), table2(f_bits, 9), table3(f_bits, 9);
-	//tbits table(f_bits, 9), table2(f_bits, 9), table3(f_bits, 9);
-	//wrapper table, table2, table3;
+	//rfilter table(f_bits, 9);
+	//tbits table(f_bits, 9);
+	wrapper table;
 
 	srand(time(NULL));
 
-	fprintf(stdout, "CORRECTNESS CHECKS\n");
-	set<int64_t> actual_set;
-	for(int i = 0; i < N; i++) {
+	//Generating vectors of size N for data contained and not contained in the table
+	set<int64_t> in_table_set, not_in_table_set;
+	while(in_table_set.size() < N) {
 		int64_t x = rand();
-		actual_set.insert(x);
+		in_table_set.insert(x);
+	}
+	while(not_in_table_set.size() < N) {
+		int64_t x = rand();
+		if(!in_table_set.count(x)) not_in_table_set.insert(x);
+	}
+	vector<int64_t> in_table, not_in_table;
+	for(int64_t i : in_table_set) 
+		in_table.push_back(i);
+	for(int64_t i : not_in_table_set)
+		not_in_table.push_back(i);
+
+	printf("INSERTIONS\n");
+	clock_t t = clock();
+	for(int64_t x : in_table)
 		if(!table.insert(x)) {
-			fprintf(stdout, "Failed insert of %ld.\n", x);
+			printf("Failed insert of %ld.\n", x);
 			exit(0);
 		}
-	}
-	bool errors = false;
-	for(int i = 0; i < N; i++) {
-		int64_t x = rand();
-		bool b1 = actual_set.count(x);
-		bool b2 = table.contains(x);
-		if(b1 != b2) {
-			fprintf(stdout, "Table incorrectly returns %d when queried for containment of %ld.\n", b2, x); 
-			errors = true;
-		}
-	}
-	if(!errors) fprintf(stdout, "Table matches std::set on all inserts/contains checks\n");
-	
-	fprintf(stdout, "TIME CHECKS\n");
-	clock_t t = clock();
-	for(int i = 0; i < N; i++) {
-		int64_t x = rand();
-		table2.insert(x);
-	}
-	double time = (clock() - t) / (double)CLOCKS_PER_SEC;
-	fprintf(stdout, "Time to do %ld inserts: %f sec\n", N, time);	
+	printf("%f\n", N / ELAPSED_SEC(t));
 
-	for(double lf = .05; lf < .95; lf += 0.05) {
-		while(table3.load_factor() < lf) {
-			int64_t x = rand();
-			table3.insert(x);
-		}
+	printf("QUERIES\n");
+	bool errors = false;
+	for(int pct = 0; pct <= 4; pct++) {
+		printf("%d percent positive checks: ", pct * 25);
 		clock_t t = clock();
 		for(int i = 0; i < N; i++) {
-			int64_t x = rand();
-			table3.contains(x);
+			int64_t r = rand(), x = rand();
+			if(r % 4 < pct) 
+				if(!table.contains(in_table[x % N]))
+					printf("Table returned false on positive query for %ld.\n", in_table[x % N]);
+			else if(table.contains(not_in_table[x % N]))
+				printf("Table returned true on negative query for %ld.\n", not_in_table[x % N]);
 		}
-		double time = (clock() - t) / (double)CLOCKS_PER_SEC;
-		fprintf(stdout, "Time to do %ld containment checks at load factor %f: %f sec\n", N, lf, time);
+		printf("%f\n", N / ELAPSED_SEC(t));
 	}
 }
