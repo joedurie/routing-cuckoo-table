@@ -1,6 +1,6 @@
 //#include "routing-filter/routing_filter.h"
-//#include "two-bits/two-bits.h"
-#include "libcuckoo-master/wrapper.h"
+#include "two-bits/two-bits.h"
+//#include "libcuckoo-master/wrapper.h"
 
 #include<stdlib.h>
 #include<set>
@@ -20,8 +20,8 @@ int main(int argc, char* argv[]) {
 	int64_t N = atoi(argv[2]);
 
 	//rfilter table(f_bits, 9);
-	//tbits table(f_bits, 9);
-	wrapper table;
+	tbits table(f_bits, 9);
+	//wrapper table;
 
 	srand(time(NULL));
 
@@ -57,10 +57,10 @@ int main(int argc, char* argv[]) {
 		clock_t t = clock();
 		for(int i = 0; i < N; i++) {
 			int64_t r = rand(), x = rand();
-			if(r % 4 < pct) 
+			if(r % 4 < pct) { 
 				if(!table.contains(in_table[x % N]))
 					printf("Table returned false on positive query for %ld.\n", in_table[x % N]);
-			else if(table.contains(not_in_table[x % N]))
+			} else if(table.contains(not_in_table[x % N]))
 				printf("Table returned true on negative query for %ld.\n", not_in_table[x % N]);
 		}
 		printf("%f\n", N / ELAPSED_SEC(t));

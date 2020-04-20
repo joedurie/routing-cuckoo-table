@@ -612,6 +612,16 @@ public:
     return find_fn(key, [](const mapped_type &) {});
   }
 
+  template <typename K> bool containsSingleThreaded(const K &key) const {
+    const hash_value hv = hashed_key(key);
+    const size_type hp = hashpower();
+    const size_type i1 = index_hash(hp, hv.hash);
+    if(try_read_from_bucket(buckets_[i1], hv.partial, key) != -1) return true;
+    const size_type i2 = alt_index(hp, hv.partial, i1);
+    if(try_read_from_bucket(buckets_[i2], hv.partial, key) != -1) return true;
+    return false;
+  }  
+
   /**
    * Updates the value associated with @p key to @p val. Equivalent to
    * calling @ref update_fn with a functor that assigns the existing mapped

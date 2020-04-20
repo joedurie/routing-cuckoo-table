@@ -19,7 +19,7 @@ struct wrapper {
 	}
 
 	bool contains(int64_t key) {
-		return table.contains(key);
+		return table.containsSingleThreaded(key);
 	}
 
 	double load_factor() { return table.load_factor(); }

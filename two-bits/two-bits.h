@@ -35,7 +35,7 @@ struct tbits {
 
 	bool insert(int64_t key) {
 		int64_t val;
-		if(table.contains(key, 0) && table.find(key, val, 3) && val == key) return true;
+		if(table.containsSingleThreaded(key, 0) && table.find(key, val, 3) && val == key) return true;
 		int ret = qf_insert(&qf, key, 0, 1, QF_WAIT_FOR_LOCK);
 		table.insert(&qf, key, key);
 		return ret >= 0;
@@ -44,7 +44,7 @@ struct tbits {
 	bool contains(int64_t key) {
 		int mask = qf_get_mask(&qf, key, 0, QF_WAIT_FOR_LOCK);
 		if(!mask) return false;
-		return table.contains(key, mask);
+		return table.containsSingleThreaded(key, mask);
 	}
 
 	double load_factor() { return table.load_factor(); }
